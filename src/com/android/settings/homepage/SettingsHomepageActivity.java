@@ -19,13 +19,22 @@ package com.android.settings.homepage;
 import android.animation.LayoutTransition;
 import android.app.ActivityManager;
 import android.app.settings.SettingsEnums;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.os.UserHandle;
+import android.os.UserManager;
 import android.view.View;
 import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
+import com.android.internal.util.UserIcons;
+
 import androidx.annotation.VisibleForTesting;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
@@ -38,11 +47,21 @@ import com.android.settings.core.HideNonSystemOverlayMixin;
 import com.android.settings.homepage.contextualcards.ContextualCardsFragment;
 import com.android.settings.overlay.FeatureFactory;
 
+import com.android.settingslib.drawable.CircleFramedDrawable;
+
 public class SettingsHomepageActivity extends FragmentActivity {
+
+    Context context;
+    ImageView avatarView;
+    UserManager mUserManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Context context = getApplicationContext();
+
+        mUserManager = context.getSystemService(UserManager.class);
 
         setContentView(R.layout.settings_homepage_container);
         final View root = findViewById(R.id.settings_homepage_container);
@@ -51,7 +70,22 @@ public class SettingsHomepageActivity extends FragmentActivity {
 
         setHomepageContainerPaddingTop();
 
-        getLifecycle().addObserver(new HideNonSystemOverlayMixin(this));
+        final Toolbar toolbar = findViewById(R.id.search_action_bar);
+        FeatureFactory.getFactory(this).getSearchFeatureProvider()
+                .initSearchToolbar(this /* activity */, toolbar, SettingsEnums.SETTINGS_HOMEPAGE);
+
+        avatarView = root.findViewById(R.id.account_avatar);
+        //final AvatarViewMixin avatarViewMixin = new AvatarViewMixin(this, avatarView);
+        avatarView.setImageDrawable(getCircularUserIcon(context));
+        avatarView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_MAIN);
+                intent.setComponent(new ComponentName("com.android.settings","com.android.settings.Settings$UserSettingsActivity"));
+                startActivity(intent);
+            }
+        });
+        //getLifecycle().addObserver(avatarViewMixin);
 
         if (!getSystemService(ActivityManager.class).isLowRamDevice()) {
             // Only allow contextual feature on high ram devices.
@@ -88,29 +122,24 @@ public class SettingsHomepageActivity extends FragmentActivity {
         view.requestFocus();
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.homepage_menu, menu);
-        return super.onCreateOptionsMenu(menu);
+    private Drawable getCircularUserIcon(Context context) {
+        Bitmap bitmapUserIcon = mUserManager.getUserIcon(UserHandle.myUserId());
+
+        if (bitmapUserIcon == null) {
+            // get default user icon.
+            final Drawable defaultUserIcon = UserIcons.getDefaultUserIcon(
+                    context.getResources(), UserHandle.myUserId(), false);
+            bitmapUserIcon = UserIcons.convertToBitmap(defaultUserIcon);
+        }
+        Drawable drawableUserIcon = new CircleFramedDrawable(bitmapUserIcon,
+                (int) context.getResources().getDimension(R.dimen.circle_avatar_size));
+
+        return drawableUserIcon;
     }
 
     @Override
-    public boolean onPrepareOptionsMenu(Menu menu) {
-        MenuItem item = menu.findItem(R.id.account_avatar);
-        if (item != null) {
-            getLifecycle().addObserver(new AvatarViewMixin(this, item));
-        }
-        return super.onPrepareOptionsMenu(menu);
-    }
-
-
-    @Override
-    public boolean onMenuItemSelected(int featureId, @NonNull MenuItem item) {
-        if (item.getItemId() == R.id.homepage_search) {
-            FeatureFactory.getFactory(this).getSearchFeatureProvider()
-                    .showSearchPage(this /* activity */, SettingsEnums.SETTINGS_HOMEPAGE);
-            return true;
-        }
-        return super.onMenuItemSelected(featureId, item);
+    public void onResume() {
+        super.onResume();
+        avatarView.setImageDrawable(getCircularUserIcon(getApplicationContext()));
     }
 }
