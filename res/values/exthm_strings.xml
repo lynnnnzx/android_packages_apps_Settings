@@ -24,6 +24,10 @@
     <string name="more_settings">More settings</string>
     <string name="about_exthmui">About exTHmUI</string>
 
+    <!-- ExthmUI Maintainer -->
+    <string name="materium_maintainer">Lynx</string>
+    <string name="materium_maintainer_title">exTHmUI maintainer</string>
+
     <!-- DC Dimming -->
     <string name="dc_dimming_title">DC Dimming</string>
     <string name="dc_dimming_info">Reduces eye strain in low light conditions but may result in reduced image quality and poor color production.</string>
